@@ -8,4 +8,48 @@ grade: stable
 adopt-info: znc
 base: core18
 
+parts:
+    znc:
+        source: https://github.com/znc/znc.git
+        source-type: git
+        source-branch: master
+        plugin: cmake
+        stage-packages:
+            - ca-certificates
+            - libicu60
+            - libperl5.26
+            - libpython3.7
+            - libpython3.6
+            - libsasl2-2
+            - perl
+            - perl-base
+            - perl-modules-5.26
+            - swig3.0
+        override-pull: |
+            snapcraftctl pull
+            # decide if to build master or release(tag)
+            last_released_tag="$(snap info ${SNAPCRAFT_PROJECT_NAME} | awk '$1 == "latest/beta:" { print $2 }')"
+            last_commited_tag=$(git describe --abbrev=0 --tags | cut -c 5-)
+            # If the latest tag from the upstream project has not been released to
+            # beta, build that tag instead of master.
+            if [ "${last_commited_tag}" != "${last_released_tag}" ]; then
+                git checkout $(git describe --abbrev=0 --tags)
+                snapcraftctl set-version ${last_commited_tag}
+            else
+                snapcraftctl set-version $(git describe --tags | cut -c 5-)
+            fi
+            sed -i \
+                -e '/\"-w\"/a \  std::getenv("PERL5LIB1"), std::getenv("PERL5LIB2"),' \
+                   modules/modperl.cpp
+            sed -i \
+                -e 's/_DATADIR_ +/CString(getenv(\"SNAP\")) + &/' \
+                -e 's/_MODDIR_ +/CString(getenv(\"SNAP\")) + &/' \
+                -e 's/CString(_SKINDIR_) +/CString(getenv(\"SNAP\")) + &/' \
+                   src/Modules.cpp src/WebModules.cpp
+            sed -i 's/(isRoot())/(false)/g' src/main.cpp
+        override-build: |
+            cmake -DCMAKE_INSTALL_PREFIX=/usr -DWANT_PERL=yes -DWANT_PYTHON=yes ../src
+            DESTDIR=$SNAPCRAFT_PART_INSTALL make install
+        stage:
+            - -usr/lib/python3.5
     - tcl-dev
