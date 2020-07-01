@@ -1,0 +1,11 @@
+name: znc-ondra
+summary: ZNC advanced IRC bouncer http://znc.in/
+description: |
+   ZNC advanced IRC bouncer http://znc.in/
+
+confinement: strict
+grade: stable
+adopt-info: znc
+base: core18
+
+    - tcl-dev
