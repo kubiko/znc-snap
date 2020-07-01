@@ -8,6 +8,19 @@ grade: stable
 adopt-info: znc
 base: core18
 
+slots:
+    modules-w:
+        interface: content
+        content: modules
+        write:
+            - $SNAP_COMMON/modules
+
+plugs:
+    modules-r:
+        interface: content
+        content: modules
+        target: $SNAP_COMMON/modules
+
 apps:
     znc:
         command: usr/bin/znc --datadir $SNAP_COMMON --allow-root --foreground
