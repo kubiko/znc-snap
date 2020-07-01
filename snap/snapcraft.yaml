@@ -52,4 +52,16 @@ parts:
             DESTDIR=$SNAPCRAFT_PART_INSTALL make install
         stage:
             - -usr/lib/python3.5
+
+build-packages:
+    - libicu-dev
+    - libperl-dev
+    - libsasl2-dev
+    - libssl-dev
+    - perl
+    - perl-base
+    - perl-modules-5.26
+    - pkg-config
+    - python3-dev
+    - swig3.0
     - tcl-dev
