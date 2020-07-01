@@ -8,6 +8,37 @@ grade: stable
 adopt-info: znc
 base: core18
 
+apps:
+    znc:
+        command: usr/bin/znc --datadir $SNAP_COMMON --allow-root --foreground
+        stop-command: usr/bin/znc stop
+        daemon: simple
+        adapter: none
+        plugs:
+            - home
+            - network
+            - network-bind
+        environment:
+           PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
+           LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH:$SNAP/lib:$SNAP/usr/lib:$SNAP/lib/${SNAPCRAFT_ARCH_TRIPLET}:$SNAP/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
+           LANG: C
+           PERL5LIB1: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl/5.26
+           PERL5LIB2: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl-base
+
+    makeconf:
+        command: usr/bin/znc --datadir $SNAP_COMMON --makeconf --foreground --allow-root
+        adapter: none
+        plugs:
+            - home
+            - network
+            - network-bind
+        environment:
+           PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
+           LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH:$SNAP/lib:$SNAP/usr/lib:$SNAP/lib/${SNAPCRAFT_ARCH_TRIPLET}:$SNAP/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
+           LANG: C
+           PERL5LIB1: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl/5.26
+           PERL5LIB2: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl-base
+
 parts:
     znc:
         source: https://github.com/znc/znc.git
