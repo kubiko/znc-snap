@@ -6,106 +6,125 @@ description: |
 confinement: strict
 grade: stable
 adopt-info: znc
-base: core18
+base: core24
+
+platforms:
+  arm64:
+  armhf:
+  amd64:
+  ppc64el:
+  riscv64:
+  s390x:
 
 slots:
-    modules-w:
-        interface: content
-        content: modules
-        write:
-            - $SNAP_COMMON/modules
+  modules-w:
+    interface: content
+    content: modules
+    write:
+      - $SNAP_COMMON/modules
 
 plugs:
-    modules-r:
-        interface: content
-        content: modules
-        target: $SNAP_COMMON/modules
+  modules-r:
+    interface: content
+    content: modules
+    target: $SNAP_COMMON/modules
+
+environment:
+  PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
+  LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH:$SNAP/lib:$SNAP/usr/lib:$SNAP/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:$SNAP/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+  LANG: C
+  PERL5LIB1: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl/5.26
+  PERL5LIB2: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl-base
 
 apps:
-    znc:
-        command: usr/bin/znc --datadir $SNAP_COMMON --allow-root --foreground
-        stop-command: usr/bin/znc stop
-        daemon: simple
-        adapter: none
-        plugs:
-            - home
-            - network
-            - network-bind
-        environment:
-           PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
-           LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH:$SNAP/lib:$SNAP/usr/lib:$SNAP/lib/${SNAPCRAFT_ARCH_TRIPLET}:$SNAP/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
-           LANG: C
-           PERL5LIB1: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl/5.26
-           PERL5LIB2: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl-base
+  znc:
+    command: usr/bin/znc --datadir $SNAP_COMMON --allow-root --foreground
+    stop-command: usr/bin/znc stop
+    daemon: simple
+    plugs:
+      - home
+      - network
+      - network-bind
 
-    makeconf:
-        command: usr/bin/znc --datadir $SNAP_COMMON --makeconf --foreground --allow-root
-        adapter: none
-        plugs:
-            - home
-            - network
-            - network-bind
-        environment:
-           PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
-           LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH:$SNAP/lib:$SNAP/usr/lib:$SNAP/lib/${SNAPCRAFT_ARCH_TRIPLET}:$SNAP/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}
-           LANG: C
-           PERL5LIB1: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl/5.26
-           PERL5LIB2: -I${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/perl-base
+  makeconf:
+    command: usr/bin/znc --datadir $SNAP_COMMON --makeconf --foreground --allow-root
+    plugs:
+      - home
+      - network
+      - network-bind
 
 parts:
-    znc:
-        source: https://github.com/znc/znc.git
-        source-type: git
-        source-branch: master
-        plugin: cmake
-        stage-packages:
-            - ca-certificates
-            - libicu60
-            - libperl5.26
-            - libpython3.7
-            - libpython3.6
-            - libsasl2-2
-            - perl
-            - perl-base
-            - perl-modules-5.26
-            - swig3.0
-        override-pull: |
-            snapcraftctl pull
-            # decide if to build master or release(tag)
-            last_released_tag="$(snap info ${SNAPCRAFT_PROJECT_NAME} | awk '$1 == "latest/beta:" { print $2 }')"
-            last_commited_tag=$(git describe --abbrev=0 --tags | cut -c 5-)
-            # If the latest tag from the upstream project has not been released to
-            # beta, build that tag instead of master.
-            if [ "${last_commited_tag}" != "${last_released_tag}" ]; then
-                git checkout $(git describe --abbrev=0 --tags)
-                snapcraftctl set-version ${last_commited_tag}
-            else
-                snapcraftctl set-version $(git describe --tags | cut -c 5-)
-            fi
-            sed -i \
-                -e '/\"-w\"/a \  std::getenv("PERL5LIB1"), std::getenv("PERL5LIB2"),' \
-                   modules/modperl.cpp
-            sed -i \
-                -e 's/_DATADIR_ +/CString(getenv(\"SNAP\")) + &/' \
-                -e 's/_MODDIR_ +/CString(getenv(\"SNAP\")) + &/' \
-                -e 's/CString(_SKINDIR_) +/CString(getenv(\"SNAP\")) + &/' \
-                   src/Modules.cpp src/WebModules.cpp
-            sed -i 's/(isRoot())/(false)/g' src/main.cpp
-        override-build: |
-            cmake -DCMAKE_INSTALL_PREFIX=/usr -DWANT_PERL=yes -DWANT_PYTHON=yes ../src
-            DESTDIR=$SNAPCRAFT_PART_INSTALL make install
-        stage:
-            - -usr/lib/python3.5
+  znc:
+    source: https://github.com/znc/znc.git
+    source-type: git
+    source-branch: master
+    plugin: cmake
+    stage-packages:
+      - ca-certificates
+      - libicu74
+      - libperl5.38t64
+      - libpython3.12t64
+      - libsasl2-2
+      - perl
+      - perl-base
+      - perl-modules-5.38
+      - swig4.1
+    override-pull: |
+      craftctl default
+      # depending on a channel in the snap store, build last release tag or master
+      # last stable tag
+      stable_tag=$(git tag --list | sed 's/znc-//g' | sort --version-sort | grep -v "rc" | tail -1)
+      latest_tag=$(git tag --list | sed 's/znc-//g' | sort --version-sort | tail -1)
+      if [[ "${latest_tag}" != "${stable_tag}"* ]]; then
+        # last release candidate tag
+        rc_tag=$(git tag --list | sed 's/znc-//g' | sort --version-sort | grep "rc" | tail -1)
+      fi
+      release_candidate_tag="${rc_tag:-}"
+      stable_version="$(snap info znc-ondra | awk '$1 == "latest/stable:" {gsub(/--/,"",$2); print $2 }')"
+      candidate_version="$(snap info znc-ondra | awk '$1 == "latest/candidate:" {gsub(/--/,"",$2); print $2 }')"
+      beta_version="$(snap info znc-ondra | awk '$1 == "latest/beta:" {gsub(/--/,"",$2); print $2 }')"
+      # If there is no stable, build latest stable_tag
+      # If there is release_candidate_tag, check if this version is also in the candate channel,
+      # If there is different version or channel is closed, build release candidate version
+      if [ -z "${stable_version}" ]; then
+        version="${stable_tag}"
+      elif [ -n "${release_candidate_tag}" ] && [ "${release_candidate_tag}" != "${candidate_version}" ] ; then
+        version="${release_candidate_tag}"
+      elif [ "^" = "${beta_version}" ] || $(dpkg --compare-versions "${beta_version}" "lt" "${stable_tag}" ); then
+        version="${stable_tag}"
+      fi
+      # if we have no version defined, we are building tip from master
+      if [ -n "${version-}" ]; then
+        git checkout znc-${version}
+      else
+        version="$(git describe --tags | cut -c 5-)"
+      fi
+      craftctl set version="${version}"
+      sed -i \
+          -e '/\"-w\"/a \  std::getenv("PERL5LIB1"), std::getenv("PERL5LIB2"),' \
+          modules/modperl.cpp
+      sed -i \
+          -e 's/_DATADIR_ +/CString(getenv(\"SNAP\")) + &/' \
+          -e 's/_MODDIR_ +/CString(getenv(\"SNAP\")) + &/' \
+          -e 's/CString(_SKINDIR_) +/CString(getenv(\"SNAP\")) + &/' \
+          src/Modules.cpp src/WebModules.cpp
+      sed -i 's/(isRoot())/(false)/g' src/main.cpp
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DWANT_PERL=yes
+      - -DWANT_PYTHON=yes
+      - -DSWIG_EXECUTABLE="/usr/bin/swig4.1"
+      - -DSWIG_DIR="/usr/share/swig4.1"
 
 build-packages:
-    - libicu-dev
-    - libperl-dev
-    - libsasl2-dev
-    - libssl-dev
-    - perl
-    - perl-base
-    - perl-modules-5.26
-    - pkg-config
-    - python3-dev
-    - swig3.0
-    - tcl-dev
+  - libicu-dev
+  - libperl-dev
+  - libsasl2-dev
+  - libssl-dev
+  - perl
+  - perl-base
+  - perl-modules-5.38
+  - pkg-config
+  - python3-dev
+  - swig4.1
+  - tcl-dev
